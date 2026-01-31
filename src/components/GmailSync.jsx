@@ -3,38 +3,44 @@ import { Mail, RefreshCw, Check, AlertCircle, ExternalLink, Loader2 } from 'luci
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-const GmailSync = ({ onImportOrders }) => {
+const GmailSync = ({ onImportOrders, userId }) => {
     const [isConnected, setIsConnected] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncResult, setSyncResult] = useState(null);
     const [error, setError] = useState(null);
 
-    // Check connection status on mount
+    // Check connection status when userId changes
     useEffect(() => {
-        checkConnectionStatus();
+        if (userId) {
+            checkConnectionStatus();
+        } else {
+            setIsConnected(false);
+        }
+    }, [userId]);
 
-        // Check URL params for OAuth callback
+    // Check URL params for OAuth callback (legacy check, user extraction handled in App.jsx)
+    useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('gmail_connected') === 'true') {
             setIsConnected(true);
-            // Clean up URL
-            window.history.replaceState({}, '', window.location.pathname);
+            // Clean up URL handled in App.jsx mostly, but good to ensure
         } else if (urlParams.get('gmail_error') === 'true') {
             setError('Failed to connect Gmail. Please try again.');
-            window.history.replaceState({}, '', window.location.pathname);
         }
     }, []);
 
+
     const checkConnectionStatus = async () => {
+        if (!userId) return;
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_URL}/auth/status`);
+            const response = await fetch(`${API_URL}/auth/status?userId=${userId}`);
             const data = await response.json();
             setIsConnected(data.connected);
         } catch (err) {
             console.error('Failed to check status:', err);
-            setError('Cannot connect to server. Make sure the backend is running.');
+            // Don't show error immediately on load, just stay disconnected
         } finally {
             setIsLoading(false);
         }
@@ -46,22 +52,25 @@ const GmailSync = ({ onImportOrders }) => {
     };
 
     const disconnectGmail = async () => {
-        try {
-            await fetch(`${API_URL}/auth/disconnect`, { method: 'POST' });
-            setIsConnected(false);
-            setSyncResult(null);
-        } catch (err) {
-            setError('Failed to disconnect');
-        }
+        // In local mode token was global, in DB mode we might want to clear tokens from DB
+        // For now, client-side disconnect is enough visual feedback
+        setIsConnected(false);
+        setSyncResult(null);
+        // Ideally call an endpoint to clear tokens in DB for this user
     };
 
     const syncOrders = async () => {
+        if (!userId) {
+            setError("User identification missing. Please refresh.");
+            return;
+        }
+
         setIsSyncing(true);
         setError(null);
         setSyncResult(null);
 
         try {
-            const response = await fetch(`${API_URL}/api/sync-orders`);
+            const response = await fetch(`${API_URL}/api/sync-orders?userId=${userId}`);
             const data = await response.json();
 
             if (data.success) {

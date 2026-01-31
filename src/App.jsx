@@ -18,53 +18,85 @@ function App() {
   const [orders, setOrders] = useState([]);
   const [budgetLimit, setBudgetLimit] = useState(10000);
   const [filter, setFilter] = useState('all');
+  const [userId, setUserId] = useState(null);
 
-  // Load from localStorage on mount
+  // Load User ID from URL or LocalStorage (for persistence)
   useEffect(() => {
-    const savedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
-    const savedBudget = localStorage.getItem(STORAGE_KEYS.BUDGET);
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlUserId = urlParams.get('userId');
 
-    if (savedOrders) {
-      try {
-        setOrders(JSON.parse(savedOrders));
-      } catch (e) {
-        console.error('Failed to load orders:', e);
-      }
-    }
-
-    if (savedBudget) {
-      setBudgetLimit(parseFloat(savedBudget));
+    if (urlUserId) {
+      setUserId(urlUserId);
+      localStorage.setItem('tiktok-user-id', urlUserId);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else {
+      const savedUserId = localStorage.getItem('tiktok-user-id');
+      if (savedUserId) setUserId(savedUserId);
     }
   }, []);
 
-  // Save orders to localStorage
+  // Fetch Orders from API
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
-  }, [orders]);
+    if (!userId) return;
 
-  // Save budget to localStorage
+    const fetchOrders = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${API_URL}/api/orders?userId=${userId}`);
+        const data = await res.json();
+        if (data.success) {
+          setOrders(data.orders);
+        }
+      } catch (error) {
+        console.error('Failed to fetch orders:', error);
+      }
+    };
+
+    fetchOrders();
+  }, [userId]);
+
+  // Save budget to localStorage (Keep this local for now, or move to DB User model later)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BUDGET, String(budgetLimit));
   }, [budgetLimit]);
 
-  // Add new order
-  const handleAddOrder = (newOrder) => {
-    setOrders(prev => [newOrder, ...prev]);
-  };
+  // Load budget
+  useEffect(() => {
+    const savedBudget = localStorage.getItem(STORAGE_KEYS.BUDGET);
+    if (savedBudget) setBudgetLimit(parseFloat(savedBudget));
+  }, []);
 
-  // Import orders from Gmail
-  const handleImportOrders = (importedOrders) => {
-    // Filter out duplicates based on emailId or orderId
-    const newOrders = importedOrders.filter(imported => {
-      return !orders.some(existing =>
-        (imported.emailId && existing.emailId === imported.emailId) ||
-        (imported.orderId && existing.orderId === imported.orderId)
-      );
-    });
-    if (newOrders.length > 0) {
-      setOrders(prev => [...newOrders, ...prev]);
+  // Add new order (Manual)
+  const handleAddOrder = async (newOrder) => {
+    if (!userId) {
+      alert('Please connect Gmail first to create an account/user ID.');
+      return;
+    }
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${API_URL}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newOrder, userId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOrders(prev => [data.order, ...prev]);
+      }
+    } catch (error) {
+      console.error('Failed to create order:', error);
     }
   };
+
+  // Import orders from Gmail Sync
+  const handleImportOrders = (importedOrders) => {
+    // API already saved them, we just need to merge/update state
+    // But actually, the sync endpoint returns the FULL list now, so we can just replace.
+    setOrders(importedOrders);
+  };
+
 
   // Delete order
   const handleDeleteOrder = (orderId) => {
@@ -152,7 +184,7 @@ function App() {
             budgetLimit={budgetLimit}
             onBudgetChange={setBudgetLimit}
           />
-          <GmailSync onImportOrders={handleImportOrders} />
+          <GmailSync onImportOrders={handleImportOrders} userId={userId} />
         </div>
 
         {/* Add Order Form */}
