@@ -18,10 +18,11 @@ app.use(cors({
 app.use(express.json());
 
 // OAuth2 Client
+const BASE_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    `http://localhost:${PORT}/auth/google/callback`
+    `${BASE_URL}/auth/google/callback`
 );
 
 // In-memory token storage (in production, use a database)
