@@ -1,0 +1,17 @@
+{
+    "name": "tiktok-orders-server",
+    "version": "1.0.0",
+    "description": "Backend server for TikTok Order & Expense Pro with Gmail integration",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "node --watch index.js"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.21.0",
+        "googleapis": "^144.0.0"
+    }
+}
