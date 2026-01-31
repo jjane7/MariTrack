@@ -42,7 +42,7 @@ function App() {
 
     const fetchOrders = async () => {
       try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://maritrack.onrender.com');
         const res = await fetch(`${API_URL}/api/orders?userId=${userId}`);
         const data = await res.json();
         if (data.success) {
@@ -75,7 +75,7 @@ function App() {
     }
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://maritrack.onrender.com');
       const res = await fetch(`${API_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

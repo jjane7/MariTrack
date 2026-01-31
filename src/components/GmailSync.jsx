@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Mail, RefreshCw, Check, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://maritrack.onrender.com');
 
 const GmailSync = ({ onImportOrders, userId }) => {
     const [isConnected, setIsConnected] = useState(false);
